@@ -6,6 +6,7 @@
 
 #include "polygonalmesh.h"
 #include "objloader.h"
+#include "meanValueVisualizer.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,13 +26,9 @@ protected:
 	std::vector <float> vtx,nom,col;
 	YsVec3 bbx[2];
 
+	meanValueVis visualizer;
 	
-	static void AddColor(std::vector <float> &col,float r,float g,float b,float a);
-	static void AddVertex(std::vector <float> &vtx,float x,float y,float z);
-	static void AddNormal(std::vector <float> &nom,float x,float y,float z);
-
-	void RemakeVertexArray(void);
-
+	
 public:
 	FsLazyWindowApplication();
 	virtual void BeforeEverything(int argc,char *argv[]);
@@ -46,57 +43,6 @@ public:
 	virtual bool NeedRedraw(void) const;
 };
 
-/* static */ void FsLazyWindowApplication::AddColor(std::vector <float> &col,float r,float g,float b,float a)
-{
-	col.push_back(r);
-	col.push_back(g);
-	col.push_back(b);
-	col.push_back(a);
-}
-/* static */ void FsLazyWindowApplication::AddVertex(std::vector <float> &vtx,float x,float y,float z)
-{
-	vtx.push_back(x);
-	vtx.push_back(y);
-	vtx.push_back(z);
-}
-/* static */ void FsLazyWindowApplication::AddNormal(std::vector <float> &nom,float x,float y,float z)
-{
-	nom.push_back(x);
-	nom.push_back(y);
-	nom.push_back(z);
-}
-
-void FsLazyWindowApplication::RemakeVertexArray(void)
-{
-	vtx.clear();
-	col.clear();
-	nom.clear();
-
-	for(auto plHd=mesh.NullPolygon(); true==mesh.MoveToNextPolygon(plHd); )
-	{
-		auto plVtHd=mesh.GetPolygonVertex(plHd);
-		auto plCol=mesh.GetColor(plHd);
-		auto plNom=mesh.GetNormal(plHd);
-
-		// Let's assume every polygon is a triangle for now.
-
-			for(int i=0; i<plVtHd.size(); ++i)
-			{
-				auto vtPos=mesh.GetVertexPosition(plVtHd[i]);
-				vtx.push_back(vtPos.xf());
-				vtx.push_back(vtPos.yf());
-				vtx.push_back(vtPos.zf());
-				nom.push_back(plNom.xf());
-				nom.push_back(plNom.yf());
-				nom.push_back(plNom.zf());
-				col.push_back(plCol.Rf());
-				col.push_back(plCol.Gf());
-				col.push_back(plCol.Bf());
-				col.push_back(plCol.Af());
-			}
-		
-	}
-}
 
 FsLazyWindowApplication::FsLazyWindowApplication()
 {
@@ -118,11 +64,10 @@ FsLazyWindowApplication::FsLazyWindowApplication()
 /* virtual */ void FsLazyWindowApplication::Initialize(int argc,char *argv[])
 {
 	//if (2<=argc && mesh.LoadBinStl(argv[1]))
-	if(2<=argc && LoadObjFile(mesh, argv[1]))
+	if(2<=argc && visualizer.Initialize(argv[1],argv[2]))
 	{
 		
-		
-		RemakeVertexArray();
+		std::cout << "MESH LOADED\n";
 		mesh.GetBoundingBox(bbx[0],bbx[1]);
 		
 		t=(bbx[0]+bbx[1])/2.0;
@@ -141,86 +86,45 @@ FsLazyWindowApplication::FsLazyWindowApplication()
 	{
 		SetMustTerminate(true);
 	}
+	// Deforming the control mesh
+	if (FSKEY_SPACE == key)
+	{
+		visualizer.deformControlMesh();
+		visualizer.RemakeVertexArray();
+	}
+	// if(FsGetKeyState(FSKEY_LEFT))
+	// {
+		// Rc.RotateXZ(YsPi/60.0);
+	// }
+	// if(FsGetKeyState(FSKEY_RIGHT))
+	// {
+		// Rc.RotateXZ(-YsPi/60.0);
+	// }
+	// if(FsGetKeyState(FSKEY_UP))
+	// {
+		// Rc.RotateYZ(YsPi/60.0);
+	// }
+	// if(FsGetKeyState(FSKEY_DOWN))
+	// {
+		// Rc.RotateYZ(-YsPi/60.0);
+	// }
+	// if (FsGetKeyState(FSKEY_PLUS))
+	// {
+		// d = d - 0.5;
+	// }
+	// if (FsGetKeyState(FSKEY_MINUS))
+	// {
+		// d = d + 0.5;
+	// }
 
-	if(FsGetKeyState(FSKEY_LEFT))
-	{
-		Rc.RotateXZ(YsPi/60.0);
-	}
-	if(FsGetKeyState(FSKEY_RIGHT))
-	{
-		Rc.RotateXZ(-YsPi/60.0);
-	}
-	if(FsGetKeyState(FSKEY_UP))
-	{
-		Rc.RotateYZ(YsPi/60.0);
-	}
-	if(FsGetKeyState(FSKEY_DOWN))
-	{
-		Rc.RotateYZ(-YsPi/60.0);
-	}
-	if (FsGetKeyState(FSKEY_PLUS))
-	{
-		d = d - 0.5;
-	}
-	if (FsGetKeyState(FSKEY_MINUS))
-	{
-		d = d + 0.5;
-	}
-
-
+	visualizer.move();
 	needRedraw=true;
 }
 /* virtual */ void FsLazyWindowApplication::Draw(void)
 {
 	needRedraw=false;
 
-	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-	glEnable(GL_DEPTH_TEST);
-
-	int wid,hei;
-	FsGetWindowSize(wid,hei);
-	auto aspect=(double)wid/(double)hei;
-	glViewport(0,0,wid,hei);
-
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	gluPerspective(45.0,aspect,d/10.0,d*2.0);
-
-	YsMatrix4x4 globalToCamera=Rc;
-	globalToCamera.Invert();
-
-	YsMatrix4x4 modelView;  // need #include ysclass.h
-	modelView.Translate(0,0,-d);
-	modelView*=globalToCamera;
-	modelView.Translate(-t);
-
-	GLfloat modelViewGl[16];
-	modelView.GetOpenGlCompatibleMatrix(modelViewGl);
-
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	
-
-	GLfloat lightDir[]={0.0f,1.0f/(float)sqrt(2.0f),1.0f/(float)sqrt(2.0f),0.0f};
-	glLightfv(GL_LIGHT0,GL_POSITION,lightDir);
-	glEnable(GL_COLOR_MATERIAL);
-	glEnable(GL_LIGHTING);
-	glEnable(GL_LIGHT0);
-
-	glMultMatrixf(modelViewGl);
-
-	
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glEnableClientState(GL_NORMAL_ARRAY);
-	glEnableClientState(GL_COLOR_ARRAY);
-	glColorPointer(4,GL_FLOAT,0,col.data());
-	glNormalPointer(GL_FLOAT,0,nom.data());
-	glVertexPointer(3,GL_FLOAT,0,vtx.data());
-	glDrawArrays(GL_TRIANGLES,0,vtx.size()/3);
-	glDisableClientState(GL_VERTEX_ARRAY);
-	glDisableClientState(GL_NORMAL_ARRAY);
-	glDisableClientState(GL_COLOR_ARRAY);
-	
+visualizer.draw();	
 
 	FsSwapBuffers();
 }
@@ -234,7 +138,7 @@ FsLazyWindowApplication::FsLazyWindowApplication()
 }
 /* virtual */ long long int FsLazyWindowApplication::GetMinimumSleepPerInterval(void) const
 {
-	return 10;
+	return 25;
 }
 /* virtual */ void FsLazyWindowApplication::BeforeTerminate(void)
 {
