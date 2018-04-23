@@ -397,20 +397,21 @@ PolygonalMesh::VertexHandle meanValueVis::PickedVtHd(int mx, int my, int pixRang
 // Deforming the control mesh
 void meanValueVis::deformControlMesh() {
 	//controlMesh_deformed = controlMesh;
-	for (auto vtxHd = controlMesh_deformed.NullVertex(); true == controlMesh_deformed.MoveToNextVertex(vtxHd); ){
-		// Translating each vertex by some amount in x-direction
-		controlMesh_deformed.SetVertexPosition(vtxHd, controlMesh_deformed.GetVertexPosition(vtxHd) + YsVec3(1.0,0.0,0.0));
-	}
+	// INITIAL TEST - shifting all the vertices by a fixed amount
+	//for (auto vtxHd = controlMesh_deformed.NullVertex(); true == controlMesh_deformed.MoveToNextVertex(vtxHd); ){
+	//	// Translating each vertex by some amount in x-direction
+	//	controlMesh_deformed.SetVertexPosition(vtxHd, controlMesh_deformed.GetVertexPosition(vtxHd) + YsVec3(1.0,0.0,0.0));
+	//}
 
 	// Calculating the mean value coordinate interpolation
 	meanValueInterpolateDeformation();
 
-	// Updating the control mesh
-	for (PolygonalMesh::VertexHandle vtxHd = controlMesh.NullVertex(), vtxHd_deformed = controlMesh_deformed.NullVertex(); 
-		true == controlMesh.MoveToNextVertex(vtxHd) && true == controlMesh_deformed.MoveToNextVertex(vtxHd_deformed); ) {
-		// Translating each vertex by some amount in x-direction
-		controlMesh.SetVertexPosition(vtxHd, controlMesh_deformed.GetVertexPosition(vtxHd_deformed));
-	}
+	//// Updating the control mesh
+	//for (PolygonalMesh::VertexHandle vtxHd = controlMesh.NullVertex(), vtxHd_deformed = controlMesh_deformed.NullVertex(); 
+	//	true == controlMesh.MoveToNextVertex(vtxHd) && true == controlMesh_deformed.MoveToNextVertex(vtxHd_deformed); ) {
+	//	// Translating each vertex by some amount in x-direction
+	//	controlMesh.SetVertexPosition(vtxHd, controlMesh_deformed.GetVertexPosition(vtxHd_deformed));
+	//}
 	RemakeVertexArray();
 }
 

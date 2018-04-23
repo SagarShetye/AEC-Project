@@ -91,7 +91,8 @@ FsLazyWindowApplication::FsLazyWindowApplication()
 	// Deforming the control mesh
 	if (FSKEY_SPACE == key)
 	{
-		visualizer.deformControlMesh();
+		//visualizer.deformControlMesh();
+		visualizer.meanValueInterpolateDeformation();
 		visualizer.RemakeVertexArray();
 	}
 
