@@ -13,13 +13,17 @@
 #include "fslazywindow.h"
 
 #include <ysshellext.h>
-
+#include <algorithm>
+#include<limits>
 #include "objloader.h"
+#define INF_D (std::numeric_limits<float>::infinity())
 
 // Class for mesh visualization
 class meanValueVis {
 private:
-	PolygonalMesh modelMesh, controlMesh, controlMesh_deformed;
+	std::unordered_map < YSHASHKEY , YsVec3 > normals;		// Map to store the average normal at each vertex
+
+	YsShellExt modelMesh, controlMesh, controlMesh_deformed;
 	float distTolerance, angleTolerance;
 	YsMatrix4x4 Rc;
 	double d;
@@ -30,10 +34,10 @@ private:
 		vtx_control, nom_control, col_control;
 
 	// vector for storing picked vertices for deformation:
-	std::vector <PolygonalMesh::VertexHandle> vertexVec;
+	std::vector <YsShellExt::VertexHandle> vertexVec;
 
 	// function stores vextex Handle selected by user:
-	void storeVertex(PolygonalMesh::VertexHandle vtHd);
+	void storeVertex(YsShellExt::VertexHandle vtHd);
 
 	// vector for storing the mouse positions for deformation:
 	std::vector < std::vector <int>> mouseVec;
@@ -47,7 +51,7 @@ public:
 	meanValueVis();
 	void meanValueInterpolateDeformation();
 	bool Initialize(const char model_fn[], const char control_fn[]);
-	void colourAllPolygons(PolygonalMesh mesh, YsColor colour);										// Adds colour to all the polygons in the mesh
+	void colourAllPolygons(YsShellExt mesh, YsColor colour);										// Adds colour to all the polygons in the mesh
 	void draw() const;
 	//void RemakeVertexArray();
 	static void AddColor(std::vector <float> &col, float r, float g, float b, float a);
@@ -58,8 +62,8 @@ public:
 	void RemakeVertexArray(void);
 	YsMatrix4x4 GetProjection(void) const;
 	YsMatrix4x4 GetModelView(void) const;
-	PolygonalMesh::PolygonHandle PickedPlHd(int mx, int my) const;
-	PolygonalMesh::VertexHandle PickedVtHd(int mx, int my, int pixRange) const;
+	YsShellExt::PolygonHandle PickedPlHd(int mx, int my) const;
+	YsShellExt::VertexHandle PickedVtHd(int mx, int my, int pixRange) const;
 
 	// function to initialize vertices for mesh deformation: 
 	void DeformSelection();
@@ -76,6 +80,5 @@ public:
 	bool terminate();
 	~meanValueVis() {};
 };
-
 
 #endif

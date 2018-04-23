@@ -18,6 +18,7 @@ void meanValueVis::meanValueInterpolateDeformation() {
 	auto vtxHd = modelMesh.NullVertex();
 	modelMesh.MoveToNextVertex(vtxHd);
 	for (; true == modelMesh.MoveToNextVertex(vtxHd);) {
+		//std::cout << "VERTEX LOOP\n";
 		YsVec3 vtx = modelMesh.GetVertexPosition(vtxHd);
 		YsVec3 totalF(0.0, 0.0, 0.0);																		// Total property value over the entire control mesh
 		float totalW = 0.0;																					// Total weight over the entire control mesh
@@ -36,9 +37,9 @@ void meanValueVis::meanValueInterpolateDeformation() {
 		auto plgHd = controlMesh.NullPolygon();
 		controlMesh.MoveToNextPolygon(plgHd);
 		for (; true == controlMesh.MoveToNextPolygon(plgHd) && true == controlMesh_deformed.MoveToNextPolygon(plgHd_deformed);) {
-			std::vector<PolygonalMesh::VertexHandle> vtxHandles = controlMesh.GetPolygonVertex(plgHd);		// Vertices in the undeformed control mesh polygon
+			auto vtxHandles = controlMesh.GetPolygonVertex(plgHd);		// Vertices in the undeformed control mesh polygon
 
-			std::vector<PolygonalMesh::VertexHandle> vtxHandles_deformed = controlMesh_deformed.GetPolygonVertex(plgHd_deformed);		// Vertices in the deformed control mesh polygon
+			auto vtxHandles_deformed = controlMesh_deformed.GetPolygonVertex(plgHd_deformed);		// Vertices in the deformed control mesh polygon
 			// vertices of the deformed control mesh
 			YsVec3 p0 = controlMesh_deformed.GetVertexPosition(vtxHandles_deformed[0]),
 				p1 = controlMesh_deformed.GetVertexPosition(vtxHandles_deformed[1]),
@@ -156,7 +157,7 @@ void meanValueVis::meanValueInterpolateDeformation() {
 
 
 // Adding colour to all polygons of a mesh
-void meanValueVis::colourAllPolygons(PolygonalMesh controlMesh_deformed, YsColor colour) {
+void meanValueVis::colourAllPolygons(YsShellExt controlMesh_deformed, YsColor colour) {
 	for (auto plgHd = controlMesh_deformed.NullPolygon(); controlMesh_deformed.MoveToNextPolygon(plgHd) == true;) {
 		controlMesh_deformed.SetPolygonColor(plgHd,colour);
 	}
@@ -170,25 +171,52 @@ bool meanValueVis::Initialize(const char model_fn[], const char control_fn[]) {
 		LoadObjFile(controlMesh_deformed, control_fn)))
 		return false;
 
+	// Forming the search table for the meshes
+	controlMesh.EnableSearch();
+	modelMesh.EnableSearch();
+	controlMesh_deformed.EnableSearch();
+
 	// Colouring the model mesh
 	colourAllPolygons(modelMesh,YsBlue());
 
 	// Setting the tolerances
 	distTolerance = 0.01f;
 	angleTolerance = 0.01f;
+
+	// Calculating the average normals at each vertex
+	for (auto vtHd = controlMesh_deformed.NullVertex(); true == controlMesh_deformed.MoveToNextVertex(vtHd);) {
+		YsVec3 normal(0.0,0.0,0.0);
+		auto neighbourPolygons = controlMesh_deformed.FindPolygonFromVertex(vtHd);				// All polygons that contain the vertex
+		//auto neighbourPolygons = controlMesh_deformed.GetNe
+		for (auto polygon : neighbourPolygons) {
+			YsVec3 temp_normal = controlMesh_deformed.GetNormal(polygon);
+			//std::cout << "X: " << temp_normal.x() << "\tY: " << temp_normal.y() << "\tZ: " << temp_normal.z() << "\n";
+			normal += temp_normal;
+			//normal += controlMesh_deformed.GetNormal(polygon);
+		}
+		normal *= 1.0 / neighbourPolygons.size();
+		normal.Normalize();
+		//std::cout << "X: " << normal.x() << "\tY: " << normal.y() << "\tZ: " << normal.z() << "\n";
+		std::pair<YSHASHKEY, YsVec3> element(controlMesh_deformed.GetSearchKey(vtHd),normal);
+		normals.insert(element);
+	}
+
 	// Bounding box of the model
-	//modelMesh.GetBoundingBox(bbox[0],bbox[1]);
-	//cout << "1" << endl;
+	modelMesh.GetBoundingBox(bbox[0],bbox[1]);
 	RemakeVertexArray();
-	//cout << "re" << endl;
 	return true;
 }
 
 // Setting up the arrays that would be used for drawing the mesh
 void meanValueVis::RemakeVertexArray() {
+	// Clearing the old models
 	vtx.clear();
 	col.clear();
 	nom.clear();
+
+	vtx_control.clear();
+	col_control.clear();
+	nom_control.clear();
 
 	for (auto plHd = modelMesh.NullPolygon(); true == modelMesh.MoveToNextPolygon(plHd); )
 	{
@@ -242,7 +270,8 @@ void meanValueVis::RemakeVertexArray() {
 			}
 		}
 	}
-	//std::cout << "# vertices: " << vtx.size() << "\n";
+	std::cout << "# vertices (Model Mesh): " << vtx.size() << "\n";
+	std::cout << "# vertices (Control Mesh): " << vtx_control.size() << "\n";
 }
 
 YsVec2i ViewPortToWindow(int winWid, int winHei, const YsVec3 &vp)
@@ -317,7 +346,7 @@ YsMatrix4x4 meanValueVis::GetModelView(void) const
 	return modelView;
 }
 
-PolygonalMesh::PolygonHandle meanValueVis::PickedPlHd(int mx, int my) const
+YsShellExt::PolygonHandle meanValueVis::PickedPlHd(int mx, int my) const
 {
 	int wid, hei;
 	FsGetWindowSize(wid, hei);
@@ -337,7 +366,7 @@ PolygonalMesh::PolygonHandle meanValueVis::PickedPlHd(int mx, int my) const
 	all.Mul(ln[0], nearPos, 1.0);
 	all.Mul(ln[1], farPos, 1.0);
 
-	PolygonalMesh::PolygonHandle pickedPlHd = controlMesh_deformed.NullPolygon();
+	YsShellExt::PolygonHandle pickedPlHd = controlMesh_deformed.NullPolygon();
 	double pickedZ = 0.0;
 	for (auto plHd = controlMesh_deformed.NullPolygon(); true == controlMesh_deformed.MoveToNextPolygon(plHd); )
 	{
@@ -364,7 +393,7 @@ PolygonalMesh::PolygonHandle meanValueVis::PickedPlHd(int mx, int my) const
 	return pickedPlHd;
 }
 
-PolygonalMesh::VertexHandle meanValueVis::PickedVtHd(int mx, int my, int pixRange) const
+YsShellExt::VertexHandle meanValueVis::PickedVtHd(int mx, int my, int pixRange) const
 {
 	int wid, hei;
 	FsGetWindowSize(wid, hei);
@@ -374,21 +403,37 @@ PolygonalMesh::VertexHandle meanValueVis::PickedVtHd(int mx, int my, int pixRang
 	auto modelView = GetModelView();
 
 	double pickedZ = 0.0;
-	auto pickedVtHd = controlMesh_deformed.NullVertex();
-	for (auto vtHd = controlMesh_deformed.NullVertex(); true == controlMesh_deformed.MoveToNextVertex(vtHd); )
-	{
-		auto vtPos = controlMesh_deformed.GetVertexPosition(vtHd);
+
+	//auto pickedVtHd = controlMesh_deformed.NullVertex();
+	//for (auto vtHd = controlMesh_deformed.NullVertex(); true == controlMesh_deformed.MoveToNextVertex(vtHd); )
+	//{
+		//auto vtPos = controlMesh_deformed.GetVertexPosition(vtHd);
+		//vtPos = projection*modelView*vtPos;
+		//auto winPos = ViewPortToWindow(wid, hei, vtPos);
+		//int dx = (mx - winPos.x()), dy = (my - winPos.y());
+	//	//if (-pixRange <= dx && dx <= pixRange && -pixRange <= dy && dy <= pixRange)
+	//	if(abs(dx) <= pixRange && abs(dy) <= pixRange)
+	//	{
+	//		if (controlMesh_deformed.NullVertex() == pickedVtHd || vtPos.z()<pickedZ)
+	//		{
+	//			pickedVtHd = vtHd;
+	//			pickedZ = vtPos.z();
+	//		}
+	//	}
+	//}
+
+	// TEST (Finding the polygon selected by the mouse and checking the closest vertex)
+	YsShellExt::PolygonHandle pickedPolygon = PickedPlHd(mx,my);
+	float distance = INF_D;
+	auto vertices = controlMesh_deformed.GetPolygonVertex(pickedPolygon);
+	YsShellExt::VertexHandle pickedVtHd = controlMesh_deformed.NullVertex();;
+	for (auto vertex : vertices) {
+		auto vtPos = controlMesh_deformed.GetVertexPosition(vertex);
 		vtPos = projection*modelView*vtPos;
 		auto winPos = ViewPortToWindow(wid, hei, vtPos);
 		int dx = (mx - winPos.x()), dy = (my - winPos.y());
-		if (-pixRange <= dx && dx <= pixRange && -pixRange <= dy && dy <= pixRange)
-		{
-			if (controlMesh_deformed.NullVertex() == pickedVtHd || vtPos.z()<pickedZ)
-			{
-				pickedVtHd = vtHd;
-				pickedZ = vtPos.z();
-			}
-		}
+		if (sqrt(dx*dx + dy*dy) < distance)
+			pickedVtHd = vertex;
 	}
 
 	return pickedVtHd;
@@ -398,10 +443,10 @@ PolygonalMesh::VertexHandle meanValueVis::PickedVtHd(int mx, int my, int pixRang
 void meanValueVis::deformControlMesh() {
 	//controlMesh_deformed = controlMesh;
 	// INITIAL TEST - shifting all the vertices by a fixed amount
-	//for (auto vtxHd = controlMesh_deformed.NullVertex(); true == controlMesh_deformed.MoveToNextVertex(vtxHd); ){
-	//	// Translating each vertex by some amount in x-direction
-	//	controlMesh_deformed.SetVertexPosition(vtxHd, controlMesh_deformed.GetVertexPosition(vtxHd) + YsVec3(1.0,0.0,0.0));
-	//}
+	for (auto vtxHd = controlMesh_deformed.NullVertex(); true == controlMesh_deformed.MoveToNextVertex(vtxHd); ){
+		// Translating each vertex by some amount in x-direction
+		controlMesh_deformed.SetVertexPosition(vtxHd, controlMesh_deformed.GetVertexPosition(vtxHd) + YsVec3(1.0,0.0,0.0));
+	}
 
 	// Calculating the mean value coordinate interpolation
 	meanValueInterpolateDeformation();
@@ -449,14 +494,14 @@ void meanValueVis::DeformSelection()
 	if (evt == FSMOUSEEVENT_LBUTTONDOWN)
 	{
 		// store vertex handles for picked vertices:
-		auto vtHd = PickedVtHd(mx, my, 20);
+		auto vtHd = PickedVtHd(mx, my, 10);
 		storeVertex(vtHd);
-		RemakeVertexArray();
+		//RemakeVertexArray();
 	}
 
 }
  
-void meanValueVis::storeVertex(PolygonalMesh::VertexHandle vtHd)
+void meanValueVis::storeVertex(YsShellExt::VertexHandle vtHd)
 // function stores vextex Handle selected by user
 {
 	vertexVec.push_back(vtHd);
@@ -473,10 +518,14 @@ void meanValueVis::mousePositions()
 	// mouse left button for selection:
 	if (evt == FSMOUSEEVENT_LBUTTONDOWN)
 	{
+		//std::cout << "mx/wid: " << (float)mx/(float)wid << "\tmy/hei: " << (float)my/(float)hei << "\n";
 		// store vertex handles for picked vertices:
 		mouseVec.push_back({ mx,my });
-		Deform(mouseVec);
-		RemakeVertexArray();
+		if (mouseVec.size() == 2) {
+			std::cout << "2 points selected for translation\n";
+			Deform(mouseVec);
+			RemakeVertexArray();
+		}
 	}
 }
 
@@ -484,20 +533,42 @@ inline void meanValueVis::Deform(std::vector < std::vector <int>> positions)
 {
 	// calculate translation:
 	int end = positions.size();
-	auto translateX = positions[0][0] - positions[end - 1][0];
-	auto translateY = positions[0][1] - positions[end - 1][1];
+	float translateX = abs(positions[0][0] - positions[end - 1][0]);
+	float translateY = abs(positions[0][1] - positions[end - 1][1]);
+	int wid, hei;
+	FsGetWindowSize(wid, hei);
+	float scale = 1.;
+	translateX /= (float)wid;
+	translateY /= (float)hei;
+	translateX *= scale;
+	translateY *= scale;
 
 	for (auto VtHd : vertexVec)
 	{
-		auto pos = controlMesh_deformed.GetVertexPosition(VtHd);
-		cout << "before:\t" << pos[0] << endl;
-		
-		pos[0] = pos[0] + 0.01*translateX;
-		pos[1] = pos[1] + 0.01*translateY;
+		//auto pos = controlMesh_deformed.GetVertexPosition(VtHd);
+		//cout << "before:\t" << pos[0] << endl;
+		//
+		//pos[0] = pos[0] + 0.01*translateX;
+		//pos[1] = pos[1] + 0.01*translateY;
 
-		cout << "after:\t" << pos[0] << endl;
+		//cout << "after:\t" << pos[0] << endl;
 
-		controlMesh_deformed.SetVertexPosition(VtHd, pos);
+		//controlMesh_deformed.SetVertexPosition(VtHd, pos);
+
+		YsVec3 vtPos = controlMesh_deformed.GetVertexPosition(VtHd);
+		std::cout << "VertexPos-> X: " << vtPos.x()<<"\tY: " << vtPos.y() << "\tZ: " << vtPos.z() << "\n";
+
+		// TEST (Moving the vertex along the normal)
+		auto iter = normals.find(controlMesh_deformed.GetSearchKey(VtHd));
+		if (iter != normals.end()) {
+			YsVec3 normal = (*iter).second;
+			std::cout << "X: " << normal.x() << "\tY: " << normal.y() << "\tZ: " << normal.z() << "\n";
+			YsVec3 pos = controlMesh_deformed.GetVertexPosition(VtHd);
+			double shift = sqrt(translateX*translateX + translateY*translateY);
+			std::cout << "translateX: " << translateX << "\ttranslateY: " << translateY << "\n";
+			std::cout << "SHIFT: " << shift << "\n";
+			controlMesh_deformed.SetVertexPosition(VtHd, pos + shift*normal);		// Movement along the normal direction
+		}
 	}
 }
 

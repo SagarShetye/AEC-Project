@@ -112,7 +112,7 @@ int GetVertexId(char vtxIdx[])
 }
 
 //This function reads the OBJ file and stores the mesh data in mesh 
-bool LoadObjFile(class PolygonalMesh &mesh, const char fn[])
+bool LoadObjFile(class YsShellExt &mesh, const char fn[])
 {
 
 
@@ -121,7 +121,7 @@ bool LoadObjFile(class PolygonalMesh &mesh, const char fn[])
 	{
 
 		std::vector <YsVec3> Vtx; //Define A vector of vertices
-		std::vector <PolygonalMesh::VertexHandle> vtHdArray; //Define a vector of vertex handle
+		std::vector <YsShellExt::VertexHandle> vtHdArray; //Define a vector of vertex handle
 
 
 				
@@ -169,7 +169,7 @@ bool LoadObjFile(class PolygonalMesh &mesh, const char fn[])
     		if (!strcmp(word,"f"))
     		{
 
-    			std::vector <PolygonalMesh::VertexHandle> plHd;
+    			std::vector <YsShellExt::VertexHandle> plHd;
     			
     			int numVtxPlg = nWord - 1; //Get the number of vertcices that make up the polygon
 

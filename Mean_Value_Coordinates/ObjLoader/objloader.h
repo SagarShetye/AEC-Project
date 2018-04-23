@@ -5,7 +5,7 @@
 #include "polygonalmesh.h"
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <ysshellext.h>
 
 
 
@@ -19,7 +19,7 @@ char *YsFgets(char buf[],unsigned long long int maxSize,FILE *fp);
 
 int GetVertexId(char vtxIdx[]);
 
-bool LoadObjFile(class PolygonalMesh &mesh, const char fn[]);
+bool LoadObjFile(class YsShellExt &mesh, const char fn[]);
 
 
 #endif

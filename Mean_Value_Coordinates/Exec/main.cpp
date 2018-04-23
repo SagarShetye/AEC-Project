@@ -91,6 +91,7 @@ FsLazyWindowApplication::FsLazyWindowApplication()
 	// Deforming the control mesh
 	if (FSKEY_SPACE == key)
 	{
+		std::cout << "INTERPOLATION STARTED\n";
 		//visualizer.deformControlMesh();
 		visualizer.meanValueInterpolateDeformation();
 		visualizer.RemakeVertexArray();
