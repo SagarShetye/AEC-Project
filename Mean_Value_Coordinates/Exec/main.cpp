@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
+using namespace std;
 
 
 class FsLazyWindowApplication : public FsLazyWindowApplicationBase
@@ -28,6 +29,7 @@ protected:
 
 	meanValueVis visualizer;
 	
+	bool checkSelection = false, deformation = false;
 	
 public:
 	FsLazyWindowApplication();
@@ -58,8 +60,8 @@ FsLazyWindowApplication::FsLazyWindowApplication()
 {
 	opt.x0=0;
 	opt.y0=0;
-	opt.wid=1200;
-	opt.hei=800;
+	opt.wid=600;
+	opt.hei=400;
 }
 /* virtual */ void FsLazyWindowApplication::Initialize(int argc,char *argv[])
 {
@@ -92,30 +94,43 @@ FsLazyWindowApplication::FsLazyWindowApplication()
 		visualizer.deformControlMesh();
 		visualizer.RemakeVertexArray();
 	}
-	// if(FsGetKeyState(FSKEY_LEFT))
-	// {
-		// Rc.RotateXZ(YsPi/60.0);
-	// }
-	// if(FsGetKeyState(FSKEY_RIGHT))
-	// {
-		// Rc.RotateXZ(-YsPi/60.0);
-	// }
-	// if(FsGetKeyState(FSKEY_UP))
-	// {
-		// Rc.RotateYZ(YsPi/60.0);
-	// }
-	// if(FsGetKeyState(FSKEY_DOWN))
-	// {
-		// Rc.RotateYZ(-YsPi/60.0);
-	// }
-	// if (FsGetKeyState(FSKEY_PLUS))
-	// {
-		// d = d - 0.5;
-	// }
-	// if (FsGetKeyState(FSKEY_MINUS))
-	// {
-		// d = d + 0.5;
-	// }
+
+	// selection of vertices for deformation:
+	if (FSKEY_D == key)
+	{
+		cout << "Vertices selection for deformation started!" << endl;
+		checkSelection = true;
+		deformation = false;
+	}
+	if (checkSelection)
+	{
+		visualizer.DeformSelection();
+	}
+
+	// deformation of the model:
+	if (FSKEY_F == key)
+	{
+		cout << "Selection done!" << endl;
+		cout << "Onwards to deformation-->" << endl;
+		checkSelection = false;
+		deformation = true;
+	}
+
+	if (deformation == true && checkSelection == false)
+	{
+		visualizer.mousePositions();
+	}
+
+	if (FSKEY_E == key)
+	{
+		checkSelection = false;
+		deformation = false;
+	}
+
+	if (FSKEY_C == key)
+	{
+		visualizer.Clear();
+	}
 
 	visualizer.move();
 	needRedraw=true;
