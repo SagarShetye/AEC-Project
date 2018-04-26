@@ -1,5 +1,5 @@
 #include "objloader.h"
-#include "polygonalmesh.h"
+#include "ysshellext.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -76,6 +76,7 @@ void SafeStrCpy(char dst[],char src[],int nLetters,int nLimit)
 //Same as Fgets buts removes the control character at the end
 char *YsFgets(char buf[],unsigned long long int maxSize,FILE *fp)
 {
+
     buf[0]=0;
     if(nullptr!=fgets(buf,maxSize,fp))
     {
@@ -112,30 +113,29 @@ int GetVertexId(char vtxIdx[])
 }
 
 //This function reads the OBJ file and stores the mesh data in mesh 
-bool LoadObjFile(class YsShellExt &mesh, const char fn[])
+bool LoadObjFile(YsShellExt &mesh, const char fn[])
 {
 
 
 	FILE *fp = fopen(fn, "rb"); //open the OBJ file
+
+    
 	if (nullptr!=fp)
 	{
 
+        printf("Loading: %s\n",fn);
 		std::vector <YsVec3> Vtx; //Define A vector of vertices
 		std::vector <YsShellExt::VertexHandle> vtHdArray; //Define a vector of vertex handle
 
-
-				
-    	
-
-		char *line = new char[256]; //This  variable is store the data in a line in the file
+		char *line = new char[256]; //This variable store the data in a line in the file
 
 
 		while (YsFgets(line,255,fp) != nullptr) //Maximum limit on character in a line is 255. Change if needed
 		{
 
-
 			char word[256];
     		int nWord,wordTop[16],wordLength[16]; //Maximum limit on words in a line is 16. Change if needed
+
 
 
     		ParseString(nWord,wordTop,wordLength,line);
@@ -163,7 +163,9 @@ bool LoadObjFile(class YsShellExt &mesh, const char fn[])
 
 		        delete [] xstr, ystr, zstr; //Release the memory
 		        
-    		}		
+    		}	
+
+            	
 
     		//If the first command of the line is 'f', then add the polygon to the mesh data structure   
     		if (!strcmp(word,"f"))
@@ -219,20 +221,18 @@ bool LoadObjFile(class YsShellExt &mesh, const char fn[])
 			mesh.SetPolygonColor(plHd,YsColor(0,255,255,1)); //Set Polygon Color
 		}
 		
-
 		
-		printf("NumVetex = %d\n",  mesh.GetNumVertex());
+		printf("NumVertex = %d\n",  mesh.GetNumVertex());
 		printf("NumPolygon = %d\n", mesh.GetNumPolygon());
 	
-
-
-
-
-
 
 		fclose(fp);
 		return true;
 	}
+    else
+    {
+        printf("Could not load the file\n");
+    }
 
 	
 

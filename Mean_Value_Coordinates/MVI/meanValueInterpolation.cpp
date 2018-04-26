@@ -42,6 +42,9 @@ std::unordered_map <YSHASHKEY,float> GetVertexMeanValues(const YsVec3 MM_Vertex_
 
 	
 	float Tolerance = 0.01; //Set the tolerance value
+
+	YsVec3 bbox[2];//bounding box of the mesh
+	Control_Mesh.GetBoundingBox(bbox[0],bbox[1]); //Get the bounding boc for control mesh
 	
 	std::unordered_map <YSHASHKEY,float> Weights; //unordered map that stores the weight for M_Vertex corresponding to each vertex of the Control_Mesh
 

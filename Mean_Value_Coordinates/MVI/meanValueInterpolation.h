@@ -17,6 +17,4 @@ std::vector <std::unordered_map <YSHASHKEY,float>> GetMeanValueCoordinates(YsShe
 std::unordered_map <YSHASHKEY,float> GetVertexMeanValues(const YsVec3 MM_Vertex_Pos, const YsShellExt &Control_Mesh);
 
 
-
-
 #endif
