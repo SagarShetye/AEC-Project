@@ -1,2 +1,16 @@
 Using the following Folders in Mean_Value_Coordinates:
+1.Exec
+2.MVI
+3.ObjLoader
+4.src
+5.utility
 
+
+Folder Structure:
+--Mean_Value_Coordinates
+      --Exec
+      --MVI
+      --ObjLoader
+      --src
+      --utility
+--CMakeLists.txt
