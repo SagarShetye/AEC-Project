@@ -1,10 +1,11 @@
 # AEC-Project
 Implementation of Mean Value Coordinate Interpolation.
 
- --To move vertex press 'M' key. Then select the vertices of the control mesh to move. Use the arrow keys and + - keys to move the vertices.
-(When M is pressed rotation by arrow keys is disabled). Press 'S' key when done.
+ Press 'E' to enable move vertices.
+ Press 'D' to disable move vertices.
 
---press 'Q' key to scale up the control mesh and 'W' key to scale it down. 
+--press 'B' key to scale up the control mesh and 'S' key to scale it down. 
 
--- Press the 'D' key to deform the model mesh after moving the vertices of the control mesh.
+-- Press the 'D' key to deform the model mesh after moving the vertices of the control mesh pr scaling the model.
+
 
