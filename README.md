@@ -6,6 +6,6 @@ Implementation of Mean Value Coordinate Interpolation.
 
 --press 'B' key to scale up the control mesh and 'S' key to scale it down. 
 
--- Press the 'D' key to deform the model mesh after moving the vertices of the control mesh pr scaling the model.
+-- Press the 'T' key to deform the model mesh after moving the vertices of the control mesh pr scaling the model.
 
 
