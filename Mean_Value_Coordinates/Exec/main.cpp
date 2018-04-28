@@ -473,7 +473,7 @@ FsLazyWindowApplication::FsLazyWindowApplication()
 	}
 	
 	//Move Model Mesh
-	if (FsGetKeyState(FSKEY_D))
+	if (FsGetKeyState(FSKEY_T))
 	{
 
 		// Translating each vertex by some amount in x-direction
