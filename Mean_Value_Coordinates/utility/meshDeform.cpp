@@ -167,6 +167,8 @@ void MoveModelMesh(const YsShellExt &Control_Mesh, YsShellExt &Model_Mesh, const
 
 }
 
+
+
 //K Mean clustering.. This function groups the vertices of the Control_Mesh into k groups using k-means clustering
 void K_Means(std::unordered_map <int,YsVec3> &K_Points,std::unordered_map <YSHASHKEY,int> &K_Groups,YsShellExt &Control_Mesh,int k)
 {
