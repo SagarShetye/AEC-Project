@@ -11,13 +11,15 @@
 #include <ysclass.h>
 #include "ysshellext.h"
 
-std::unordered_map<YSHASHKEY, YsColor> vertexColours;
-std::unordered_map<YSHASHKEY, YsColor> oldModelColours;
-std::unordered_map<YSHASHKEY, YsColor> interpolatedColours;
+namespace meshColour {
+	static std::unordered_map<YSHASHKEY, YsColor> vertexColours;
+	static std::unordered_map<YSHASHKEY, YsColor> oldModelColours;
+	static std::unordered_map<YSHASHKEY, YsColor> interpolatedColours;
 
 
-void colourModelMesh(const YsShellExt &controlMesh, YsShellExt &modelMesh, const std::vector <std::unordered_map <YSHASHKEY, float>> weights);
-void getColours(YsShellExt &modelMesh, YsShellExt &controlMesh_deformed);
-void recolourPolygons(YsShellExt &modelMesh);
+	void colourModelMesh(YsShellExt &controlMesh, YsShellExt &modelMesh, const std::vector <std::unordered_map <YSHASHKEY, float>> weights);	// Performs interpolation
+	void getColours(YsShellExt &modelMesh, YsShellExt &controlMesh_deformed);		//Forms map of the colours (initializer)
+	void recolourPolygons(YsShellExt &modelMesh);		// Colours all the polygons after the interpolation
+};
 
 #endif

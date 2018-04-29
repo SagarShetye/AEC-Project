@@ -20,9 +20,6 @@
 
 #define INF_D (std::numeric_limits<float>::infinity())
 
-// TEST
-void meanValueInterpolateDeformation(YsShellExt &modelMesh, YsShellExt &controlMesh, YsShellExt &controlMesh_deformed,
-	float angleTolerance, float distTolerance, YsVec3 bbox[2]);
 
 class FsLazyWindowApplication : public FsLazyWindowApplicationBase
 {
@@ -623,7 +620,7 @@ FsLazyWindowApplication::FsLazyWindowApplication()
 		MoveModelMesh(Control_Mesh, Model_Mesh,Weights_Map);
 
 		//// TEST
-		//meanValueInterpolateDeformation(Model_Mesh, controlMeshUndeformed,Control_Mesh,0.01f,0.01f,bbx);
+		meshColour::colourModelMesh(Control_Mesh, Model_Mesh,Weights_Map);
 		RemakeVertexArray();
 	}
 	//Save the mesh
@@ -779,161 +776,4 @@ static FsLazyWindowApplication *appPtr=nullptr;
 		appPtr=new FsLazyWindowApplication;
 	}
 	return appPtr;
-}
-
-
-
-
-// TEST (Mean Value Deformation)
-// Function to interpolate the mean value coordinates for a triangular mesh
-// It takes 2 parameters viz. mesh of the model and the control mesh
-// It calculates the required deformation value at each vertex
-void meanValueInterpolateDeformation(YsShellExt &modelMesh, YsShellExt &controlMesh, YsShellExt &controlMesh_deformed,
-							float angleTolerance, float distTolerance, YsVec3 bbox[2]) {
-	distTolerance = 0.001*(bbox[1] - bbox[0]).GetLength();
-	// Iterating over the vertices of the model mesh
-	auto vtxHd = modelMesh.NullVertex();
-	modelMesh.MoveToNextVertex(vtxHd);
-	for (; true == modelMesh.MoveToNextVertex(vtxHd);) {
-		//std::cout << "VERTEX LOOP\n";
-		YsVec3 vtx = modelMesh.GetVertexPosition(vtxHd);
-		YsVec3 totalF(0.0, 0.0, 0.0);																		// Total property value over the entire control mesh
-		float totalW = 0.0;																					// Total weight over the entire control mesh
-		bool interpolate = true;
-		/*for (auto vHd = controlMesh.NullVertex(); true == controlMesh.MoveToNextVertex(vHd);) {
-		float d = (controlMesh.GetVertexPosition(vHd) - vtx).GetLength();
-		if (d < distTolerance) {
-		modelMesh.SetVertexPosition(vtxHd, controlMesh.GetVertexPosition(vHd));
-		break;
-		}
-		}*/
-
-		// Iterating over the triangles in the control mesh for the interpolation
-		auto plgHd_deformed = controlMesh_deformed.NullPolygon();
-		controlMesh_deformed.MoveToNextPolygon(plgHd_deformed);
-		auto plgHd = controlMesh.NullPolygon();
-		controlMesh.MoveToNextPolygon(plgHd);
-		for (; true == controlMesh.MoveToNextPolygon(plgHd) && true == controlMesh_deformed.MoveToNextPolygon(plgHd_deformed);) {
-			auto vtxHandles = controlMesh.GetPolygonVertex(plgHd);		// Vertices in the undeformed control mesh polygon
-
-			auto vtxHandles_deformed = controlMesh_deformed.GetPolygonVertex(plgHd_deformed);		// Vertices in the deformed control mesh polygon
-																									// vertices of the deformed control mesh
-			YsVec3 p0 = controlMesh_deformed.GetVertexPosition(vtxHandles_deformed[0]),
-				p1 = controlMesh_deformed.GetVertexPosition(vtxHandles_deformed[1]),
-				p2 = controlMesh_deformed.GetVertexPosition(vtxHandles_deformed[2]);
-
-			//std::cout << "Deformed size: " << vtxHandles_deformed.size() << "\n";
-			float d0 = (controlMesh.GetVertexPosition(vtxHandles[0]) - vtx).GetLength(),
-				d1 = (controlMesh.GetVertexPosition(vtxHandles[1]) - vtx).GetLength(),
-				d2 = (controlMesh.GetVertexPosition(vtxHandles[2]) - vtx).GetLength();						// Distance of vtx from the vertices of the polygon
-
-																											// If the vtx is very close to any vertex of the control mesh, approximate the values to be equal at both the points
-			if (d0 < distTolerance) {
-				modelMesh.SetVertexPosition(vtxHd, controlMesh_deformed.GetVertexPosition(vtxHandles_deformed[0]));
-				// TODO:Move to next vertex in the model mesh
-				interpolate = false;
-				break;
-				//continue;
-			}
-			if (d1 < distTolerance) {
-				modelMesh.SetVertexPosition(vtxHd, controlMesh_deformed.GetVertexPosition(vtxHandles_deformed[1]));
-				// TODO:Move to next vertex in the model mesh
-				interpolate = false;
-				break;
-				//continue;
-			}
-			if (d2 < distTolerance) {
-				modelMesh.SetVertexPosition(vtxHd, controlMesh_deformed.GetVertexPosition(vtxHandles_deformed[2]));
-				// TODO:Move to next vertex in the model mesh
-				interpolate = false;
-				break;
-				//continue;
-			}
-
-			// Moving to the next triangle in the control mesh if vtx is too far from it
-			float dimX = bbox[1].x() - bbox[0].x(), dimY = bbox[1].y() - bbox[0].y(),
-				dimZ = bbox[1].z() - bbox[0].z();
-			if (d0 > (1 - distTolerance)*dimX || d0 > (1 - distTolerance)*dimY || d0 > (1 - distTolerance)*dimZ)
-				continue;
-			if (d1 > (1 - distTolerance)*dimX || d2 > (1 - distTolerance)*dimY || d1 > (1 - distTolerance)*dimZ)
-				continue;
-			if (d2 > (1 - distTolerance)*dimX || d2 > (1 - distTolerance)*dimY || d2 > (1 - distTolerance)*dimZ)
-				continue;
-
-			//std::cout << "No distTolerance\n";
-			// Unit vectors along direction from vtx to vertices of the polygon
-			YsVec3 u0 = (controlMesh.GetVertexPosition(vtxHandles[0]) - vtx).UnitVector(controlMesh.GetVertexPosition(vtxHandles[0]) - vtx),
-				u1 = (controlMesh.GetVertexPosition(vtxHandles[1]) - vtx).UnitVector(controlMesh.GetVertexPosition(vtxHandles[1]) - vtx),
-				u2 = (controlMesh.GetVertexPosition(vtxHandles[2]) - vtx).UnitVector(controlMesh.GetVertexPosition(vtxHandles[2]) - vtx);
-
-			// Calculating the length of edges projected on the sphere centered at vtx
-			float L0 = (u1 - u2).GetLength(), L1 = (u2 - u0).GetLength(), L2 = (u0 - u1).GetLength();
-			float theta_0 = 2 * asin(L0 / 2.0), theta_1 = 2 * asin(L1 / 2.0), theta_2 = 2 * asin(L2 / 2.0);
-			float h = (theta_0 + theta_1 + theta_2) / 2.0;
-
-			// vtx lies in the polygon, normal Barycentric coordinates used
-			if (YsPi - h < angleTolerance) {
-				float w0, w1, w2;											// Weights for Barycentric interpolation
-				w0 = sin(theta_0)*L1*L2;
-				w1 = sin(theta_1)*L0*L2;
-				w2 = sin(theta_2)*L1*L0;
-
-				//YsVec3 newPosition = (w0*controlMesh_deformed.GetVertexPosition(vtxHandles_deformed[0]) + w1*controlMesh_deformed.GetVertexPosition(vtxHandles_deformed[1]) +
-				//	w2*controlMesh_deformed.GetVertexPosition(vtxHandles_deformed[2])) / (w0 + w1 + w2);
-				YsVec3 newPosition = (w0*p0 + w1*p1 + w2*p2) / (w0 + w1 + w2);
-				modelMesh.SetVertexPosition(vtxHd, newPosition);
-				// TODO:Move to next vertex in the model mesh
-				interpolate = false;
-				break;
-				//continue;
-			}
-
-			// vtx doesn't lie in the plane of the polygon, have to consider the spherical triangle
-			float c0 = 2 * sin(h)*sin(h - theta_0) / (sin(theta_1)*sin(theta_2)) - 1,
-				c1 = 2 * sin(h)*sin(h - theta_1) / (sin(theta_0)*sin(theta_2)) - 1,
-				c2 = 2 * sin(h)*sin(h - theta_2) / (sin(theta_0)*sin(theta_1)) - 1;
-			float det = u0.x()*(u1.y()*u2.z() - u2.y()*u1.z()) - u1.x()*(u0.y()*u2.z() - u2.y()*u0.z())
-				+ u2.x()*(u0.y()*u1.z() - u0.z()*u1.y());
-			float s0 = (det / abs(det))*sqrt(1 - c0*c0),
-				s1 = (det / abs(det))*sqrt(1 - c1*c1),
-				s2 = (det / abs(det))*sqrt(1 - c2*c2);
-
-			// vtx lies in plane of the polygon but outide it
-			if (abs(s0) <= angleTolerance || abs(s1) <= angleTolerance || abs(s2) <= angleTolerance)
-				continue;
-
-			// Calculating the weights
-			float w0, w1, w2;
-			//w0 = (theta_0 - c1*theta_2 - c2*theta_1) / (d0*sin(theta_1)*s2);
-			//w1 = (theta_1 - c0*theta_2 - c2*theta_0) / (d1*sin(theta_2)*s0);
-			//w2 = (theta_2 - c1*theta_0 - c0*theta_1) / (d2*sin(theta_0)*s1);
-
-			w0 = (theta_0 - c1*theta_2 - c2*theta_1) / (2 * d0*sin(theta_2)*sqrt(1 - c1*c1));
-			w1 = (theta_1 - c0*theta_2 - c2*theta_0) / (2 * d1*sin(theta_0)*sqrt(1 - c2*c2));
-			w2 = (theta_2 - c1*theta_0 - c0*theta_1) / (2 * d2*sin(theta_1)*sqrt(1 - c0*c0));
-
-
-			//totalF += w0*controlMesh_deformed.GetVertexPosition(vtxHandles_deformed[0]) + w1*controlMesh_deformed.GetVertexPosition(vtxHandles_deformed[1])
-			//	+ w2*controlMesh_deformed.GetVertexPosition(vtxHandles_deformed[2]);
-			totalF += w0*p0 + w1*p1 + w2*p2;
-			float w = w0 + w1 + w2;
-			//std::cout << "w: " << w << "\n";
-			//w = w > 1.0 ? 1.0 : w;			// clamping between [0,1]
-			totalW += w;
-
-			//// Moving to the next polygon of the deformed control mesh
-			//controlMesh_deformed.MoveToNextPolygon(plgHd_deformed);										
-		}
-		if (totalW == 0)
-			std::cout << "total weight = 0\n";
-
-		// Updating the vertex position of the model based on the interpolated value from the control mesh
-		if (interpolate) {
-			YsVec3 newPos = totalF / totalW;
-			//std::cout << "X: " << totalF.x() << "\tY: " << totalF.y() << "\tZ: " << totalF.z() << "\n";
-			modelMesh.SetVertexPosition(vtxHd, newPos);
-		}
-		//std::cout << "newX: " << newPos.x() << "\tnewY: " << newPos.y() << "\tnewZ: " << newPos.z() << "\n";
-	}
-
 }

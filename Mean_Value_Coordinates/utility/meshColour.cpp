@@ -6,7 +6,10 @@
 
 
 // Function to colour the model mesh after slicing
-void colourModelMesh(const YsShellExt &controlMesh, YsShellExt &modelMesh, const std::vector <std::unordered_map <YSHASHKEY, float>> weights) {
+void meshColour::colourModelMesh(YsShellExt &controlMesh, YsShellExt &modelMesh, const std::vector <std::unordered_map <YSHASHKEY, float>> weights) {
+	// Forming the colour map
+	getColours(modelMesh,controlMesh);
+
 	int i = 0;
 	for (auto modelVTHd = modelMesh.NullVertex(); true == modelMesh.MoveToNextVertex(modelVTHd);){
 		auto Weights = weights[i];
@@ -24,13 +27,16 @@ void colourModelMesh(const YsShellExt &controlMesh, YsShellExt &modelMesh, const
 		}
 
 		YsColor newColour(r / totalW, g / totalW, b / totalW);							//Calculate new colour for Model Mesh vertex
-		std::pair<YSHASHKEY, YsColor> element(modelMesh.GetSearchKey(modelVTHd),newColour);
-		interpolatedColours.insert(element);
+		std::pair<YSHASHKEY, YsColor> elem(modelMesh.GetSearchKey(modelVTHd),newColour);
+		interpolatedColours.insert(elem);
 		i++;
 	}
+
+	// Recolouring the polygon based on the interpolation
+	recolourPolygons(modelMesh);
 }
 
-void getColours(YsShellExt &modelMesh, YsShellExt &controlMesh_deformed) {
+void meshColour::getColours(YsShellExt &modelMesh, YsShellExt &controlMesh_deformed) {
 	// COLOURS
 	// Forming the colour map for the vertices
 	for (auto vtHd = controlMesh_deformed.NullVertex(); true == controlMesh_deformed.MoveToNextVertex(vtHd);) {
@@ -45,8 +51,8 @@ void getColours(YsShellExt &modelMesh, YsShellExt &controlMesh_deformed) {
 		}
 		colour.SetFloatRGB(colour.Rf() / (float)neighbourPolygons.size(), colour.Gf() / (float)neighbourPolygons.size(), colour.Bf() / (float)neighbourPolygons.size());
 		//std::cout << "X: " << normal.x() << "\tY: " << normal.y() << "\tZ: " << normal.z() << "\n";
-		std::pair<YSHASHKEY, YsColor> element(controlMesh_deformed.GetSearchKey(vtHd), colour);
-		vertexColours.insert(element);
+		std::pair<YSHASHKEY, YsColor> el(controlMesh_deformed.GetSearchKey(vtHd), colour);
+		vertexColours.insert(el);
 	}
 
 	// Initial colours of vertices in the model Mesh
@@ -66,7 +72,7 @@ void getColours(YsShellExt &modelMesh, YsShellExt &controlMesh_deformed) {
 }
 
 // Function to recolour the polygons of the model mesh
-void recolourPolygons(YsShellExt &modelMesh) {
+void meshColour::recolourPolygons(YsShellExt &modelMesh) {
 	for (auto modelplHd = modelMesh.NullPolygon(); true == modelMesh.MoveToNextPolygon(modelplHd);) {
 		auto polygonVertices = modelMesh.GetPolygonVertex(modelplHd);
 		float r = 0.0f, g = 0.0f, b = 0.0f;
