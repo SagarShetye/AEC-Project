@@ -440,7 +440,6 @@ FsLazyWindowApplication::FsLazyWindowApplication()
 		LoadObjFile(Model_Mesh,argv[1]); //load the  model mesh
 		LoadObjFile(Control_Mesh,argv[2]); //Load  the control  mesh
 
-		LoadObjFile(controlMeshUndeformed, argv[2]); //Load  the undeformed control  mesh
 
 		Weights_Map = GetMeanValueCoordinates(Model_Mesh,Control_Mesh); //Calculate the weights
 		
@@ -453,7 +452,7 @@ FsLazyWindowApplication::FsLazyWindowApplication()
 		//printf("Target %s\n",t.Txt());
 		//printf("Diagonal %lf\n",d);
 		
-
+		std::cout << "INITIALIZE DONE\n";
 	}
 }
 /* virtual */ void FsLazyWindowApplication::Interval(void)
@@ -617,7 +616,7 @@ FsLazyWindowApplication::FsLazyWindowApplication()
 	if (FsGetKeyState(FSKEY_T))
 	{
 
-		MoveModelMesh(Control_Mesh, Model_Mesh,Weights_Map);
+		//MoveModelMesh(Control_Mesh, Model_Mesh,Weights_Map);
 
 		//// TEST
 		meshColour::colourModelMesh(Control_Mesh, Model_Mesh,Weights_Map);
