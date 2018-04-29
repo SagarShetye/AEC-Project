@@ -2,21 +2,21 @@
 
 #include <ysclass.h>
 #include <glutil.h>
-#include "meshDeform.h"
-#include "meshColour.h"
+
 
 #include <fslazywindow.h>
 
 #include "ysshellext.h"
 #include "objloader.h"
 #include "meanValueInterpolation.h"
+#include "meshDeform.h"
+#include "colorInterpolation.h"
 
 #include <unordered_set>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
-#include<iostream>
 
 #define INF_D (std::numeric_limits<float>::infinity())
 
@@ -24,12 +24,13 @@
 class FsLazyWindowApplication : public FsLazyWindowApplicationBase
 {
 protected:
-	YsShellExt controlMeshUndeformed;
 	bool needRedraw;
 
 	YsMatrix4x4 Rc;
 	double d;
 	YsVec3 t;
+
+	//////////////////////////////Deformation////////////////////////////
 	std::unordered_set <YSHASHKEY> PickedVertices; //unordered set of vertices picked by the mouse to move to ensure no vertex is added twice
 	bool moveVertex; //flag to indicate whether to move vertices of control mesh or not
 	bool moveCluster; //flag for moving the clustered vertex of control mesh ---k means clustering
@@ -38,23 +39,37 @@ protected:
 	int group_kmean; //no of clusters to form;
 	std::unordered_map <YSHASHKEY,int> K_Groups; //kmean clustering  - the groups
 	bool dispMesh; //flag for not displaying model mesh while moving clustered  k group points
+	//////////////////////////////////////////////////////////////////////
 
+
+	/////////////////////////////Color Interpolation/////////////////////////////
+	std::unordered_map <YSHASHKEY,YsVec3> CM_colorMap; //Color values for the vertices of the control mesh
+	std::unordered_map <YSHASHKEY,YsVec3> MM_colorMap; //color values for the vertices of the model mesh
+	///////////////////////////////////////////
+
+	///////////////////////////////model mesh, control mesh and corresponding weights//////////
 	YsShellExt Model_Mesh; //The Model mesh
 	YsShellExt Control_Mesh; //The control mesh
 	std::vector <std::unordered_map <YSHASHKEY,float>> Weights_Map; //The weights map for every vertices of Model_Mesh
+	//////////////////////////////////////////////////////////////////////////////////////////
 
 	std::vector <float> vtx,nom,col; //For model mesh
 	std::vector <float> vtx_control, nom_control, col_control; //For Control Mesh
 	std::vector <float> vtx_highlight,col_highlight; //for picked vertices
 	std::vector <float> vtx_k,col_k; //for points in k groups
 
+	///////////test////////////////
+
+	std::vector <float> vtx_fun, col_fun; //for function interpolation
+	/////////////////////////////
+
+
+
 	YsVec3 bbx[2];//bounding box of the mesh
 
-	
 	static void AddColor(std::vector <float> &col,float r,float g,float b,float a);
 	static void AddVertex(std::vector <float> &vtx,float x,float y,float z);
 	static void AddNormal(std::vector <float> &nom,float x,float y,float z);
-
 
 	YsMatrix4x4 GetProjection(void) const;
 	YsMatrix4x4 GetModelView(void) const;
@@ -113,6 +128,9 @@ void FsLazyWindowApplication::RemakeVertexArray(void)
 
 	vtx_k.clear();
 	col_k.clear();
+
+	vtx_fun.clear();
+	col_fun.clear();
 
 	//Model Mesh
 	for(auto plHd=Model_Mesh.NullPolygon(); true==Model_Mesh.MoveToNextPolygon(plHd); )
@@ -211,9 +229,28 @@ void FsLazyWindowApplication::RemakeVertexArray(void)
 		col_k.push_back(1.0);
 		col_k.push_back(0.0);
 		col_k.push_back(1.0);
-
 	}
 
+	//color vallues of vertices of control mesh///////////////////////////////////////
+	Control_Mesh.EnableSearch();
+	
+	for (auto &c : CM_colorMap)
+	{
+		auto vtHd = Control_Mesh.FindVertex(c.first);
+		auto vtPos = Control_Mesh.GetVertexPosition(vtHd);
+
+		auto color = c.second;
+
+		vtx_fun.push_back(vtPos.xf());
+		vtx_fun.push_back(vtPos.yf());
+		vtx_fun.push_back(vtPos.zf());
+		col_fun.push_back(color.xf());
+		col_fun.push_back(color.yf());
+		col_fun.push_back(color.zf());
+		col_fun.push_back(1.0);
+
+	}
+	////////////////////////////////////////////////////////////////////////////////////
 	
 }
 
@@ -314,30 +351,29 @@ YsShellExt::VertexHandle FsLazyWindowApplication::PickedVtHd(int mx,int my,int p
 	double pickedZ=0.0;
 
 	
-	//auto pickedVtHd=Control_Mesh.NullVertex();
-	//for(auto vtHd=Control_Mesh.NullVertex(); true==Control_Mesh.MoveToNextVertex(vtHd); )
-	//{
-	//	auto vtPos=Control_Mesh.GetVertexPosition(vtHd);
-	//	vtPos=projection*modelView*vtPos;
-	//	auto winPos=ViewPortToWindow(wid,hei,vtPos); //here ViewPort means the clip coordinates (i guess)
-	//	
+	auto pickedVtHd=Control_Mesh.NullVertex();
+	for(auto vtHd=Control_Mesh.NullVertex(); true==Control_Mesh.MoveToNextVertex(vtHd); )
+	{
+		auto vtPos=Control_Mesh.GetVertexPosition(vtHd);
+		vtPos=projection*modelView*vtPos;
+		auto winPos=ViewPortToWindow(wid,hei,vtPos); //here ViewPort means the clip coordinates (i guess)
+		
 
-	//	//printf("%d winPos: %lf %lf %lf\n",Control_Mesh.GetSearchKey(vtHd), winPos.xf(),winPos.yf(),vtPos.z());
+		//printf("%d winPos: %lf %lf %lf\n",Control_Mesh.GetSearchKey(vtHd), winPos.xf(),winPos.yf(),vtPos.z());
 
-	//	int dx=(mx-winPos.x()),dy=(my-winPos.y());
-	//	//double d = sqrt(dx*dx + dy*dy);
-	//	if(-pixRange<=dx && dx<=pixRange && -pixRange<=dy && dy<=pixRange)
-	//	{
-	//		if(Control_Mesh.NullVertex()==pickedVtHd || vtPos.z()<pickedZ)
-	//		{
-	//			pickedVtHd=vtHd;
-	//			pickedZ=vtPos.z();
-	//		}
-	//	}
-	//}
+		int dx=(mx-winPos.x()),dy=(my-winPos.y());
+		//double d = sqrt(dx*dx + dy*dy);
+		if(-pixRange<=dx && dx<=pixRange && -pixRange<=dy && dy<=pixRange)
+		{
+			if(Control_Mesh.NullVertex()==pickedVtHd || vtPos.z()<pickedZ)
+			{
+				pickedVtHd=vtHd;
+				pickedZ=vtPos.z();
+			}
+		}
+	}
 	
-	
-	// TEST
+	/*
 	YsShellExt::PolygonHandle pickedPolygon = PickedPlHd(mx,my);
 	float distance = INF_D;
 	auto vertices = Control_Mesh.GetPolygonVertex(pickedPolygon);
@@ -357,7 +393,7 @@ YsShellExt::VertexHandle FsLazyWindowApplication::PickedVtHd(int mx,int my,int p
 		}
 			
 	}
-	
+	*/
 
 	return pickedVtHd;
 
@@ -440,8 +476,22 @@ FsLazyWindowApplication::FsLazyWindowApplication()
 		LoadObjFile(Model_Mesh,argv[1]); //load the  model mesh
 		LoadObjFile(Control_Mesh,argv[2]); //Load  the control  mesh
 
-
+		if (4 <= argc)
+		{
+			group_kmean = atoi(argv[3]);  //get the number of cluster points
+		}
+		
 		Weights_Map = GetMeanValueCoordinates(Model_Mesh,Control_Mesh); //Calculate the weights
+
+		////Testing Color Interpolation////////////////
+
+		CM_colorMap = GenerateColorControlMesh(Control_Mesh);
+
+		InterpolateColor(Control_Mesh,Model_Mesh,Weights_Map,CM_colorMap);
+
+		/////////////////////////////////////////////////////
+
+
 		
 		RemakeVertexArray();
 		Control_Mesh.GetBoundingBox(bbx[0],bbx[1]);
@@ -452,7 +502,7 @@ FsLazyWindowApplication::FsLazyWindowApplication()
 		//printf("Target %s\n",t.Txt());
 		//printf("Diagonal %lf\n",d);
 		
-		std::cout << "INITIALIZE DONE\n";
+
 	}
 }
 /* virtual */ void FsLazyWindowApplication::Interval(void)
@@ -481,11 +531,11 @@ FsLazyWindowApplication::FsLazyWindowApplication()
 	}
 	if (FsGetKeyState(FSKEY_PLUS)) //zoom in
 	{
-		d -= 0.1;		
+		d -= 0.5;		
 	}
 	if (FsGetKeyState(FSKEY_MINUS)) //zoom out
 	{
-		d += 0.1;	
+		d += 0.5;	
 	}
 
 	if(FsGetKeyState(FSKEY_TEN6)) //move vertices in x
@@ -616,10 +666,7 @@ FsLazyWindowApplication::FsLazyWindowApplication()
 	if (FsGetKeyState(FSKEY_T))
 	{
 
-		//MoveModelMesh(Control_Mesh, Model_Mesh,Weights_Map);
-
-		//// TEST
-		meshColour::colourModelMesh(Control_Mesh, Model_Mesh,Weights_Map);
+		MoveModelMesh(Control_Mesh, Model_Mesh,Weights_Map);
 		RemakeVertexArray();
 	}
 	//Save the mesh
@@ -741,6 +788,18 @@ FsLazyWindowApplication::FsLazyWindowApplication()
 	glDrawArrays(GL_POINTS,0,vtx_k.size()/3);
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisableClientState(GL_COLOR_ARRAY);
+
+	////Draw function values//////////////////
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glEnableClientState(GL_COLOR_ARRAY);
+	glPointSize(10.0f);
+	glVertexPointer(3,GL_FLOAT,0,vtx_fun.data());
+	glColorPointer(4,GL_FLOAT,0,col_fun.data());
+	glDrawArrays(GL_POINTS,0,vtx_fun.size()/3);
+	glDisableClientState(GL_VERTEX_ARRAY);
+	glDisableClientState(GL_COLOR_ARRAY);
+
+	/////////////////////////////////
 	
 
 	FsSwapBuffers();
